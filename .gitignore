@@ -17,3 +17,4 @@ htmlcov/
 .env
 .env.local
 !.env.example
+.worktrees/
