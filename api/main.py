@@ -12,12 +12,11 @@ _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-# Also make the src/ sub-package importable as a plain namespace (agents.*).
-# The existing code inside src/agents/ imports with `from agents.xxx import …`
-# which works only when src/ itself is on sys.path.
+# Append src/ so internal src/agents/ imports (e.g. `from agents.llm_classifier import …`)
+# resolve correctly. Append (not insert) so top-level agents/ keeps precedence.
 _SRC_DIR = os.path.join(_PROJECT_ROOT, "src")
 if _SRC_DIR not in sys.path:
-    sys.path.insert(0, _SRC_DIR)
+    sys.path.append(_SRC_DIR)
 
 from dotenv import load_dotenv
 
@@ -38,7 +37,8 @@ from utils.analytics import AnalyticsTracker
 _triage_agent = TriageAgent()
 _response_agent = ResponseAgent()
 _escalation_agent = EscalationAgent()
-_analytics = AnalyticsTracker("analytics.json")
+_ANALYTICS_PATH = os.path.join(_PROJECT_ROOT, "analytics.json")
+_analytics = AnalyticsTracker(_ANALYTICS_PATH)
 _ticket_history: list = []
 
 # ── App factory ───────────────────────────────────────────────────────────────
@@ -54,7 +54,7 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
-        allow_credentials=True,
+        allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],
     )

@@ -3,7 +3,7 @@
 import uuid
 from typing import List
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 
 from api.models import TicketRequest, TicketResponse, TicketSummary, TicketsListResponse
 
@@ -23,95 +23,105 @@ async def process_ticket(body: TicketRequest, request: Request) -> TicketRespons
       3. Otherwise → EscalationAgent creates an escalation ticket.
       4. Record in AnalyticsTracker and append to in-memory history.
     """
-    state = request.app.state
+    try:
+        state = request.app.state
 
-    ticket_id = str(uuid.uuid4())[:8]
-    ticket_text = body.ticket_text
+        ticket_id = str(uuid.uuid4())
+        ticket_text = body.ticket_text
 
-    # Step 1: Triage
-    classification = state.triage_agent.classify_ticket(ticket_text)
+        # Step 1: Triage
+        classification = state.triage_agent.classify_ticket(ticket_text)
 
-    # Step 2: Route
-    if classification.should_auto_respond():
-        response_text = state.response_agent.generate_response(ticket_text, classification.category)
-        quality_score = state.response_agent.evaluate_quality(response_text)
+        # Step 2: Route
+        if classification.should_auto_respond():
+            response_text = state.response_agent.generate_response(ticket_text, classification.category)
+            quality_score = state.response_agent.evaluate_quality(response_text)
 
-        state.analytics.track_ticket_processed(
-            ticket_id=ticket_id,
-            category=classification.category,
-            auto_responded=True,
-            confidence=classification.confidence,
-            tokens_used=200,
-            response_time=0.5,
-        )
+            state.analytics.track_ticket_processed(
+                ticket_id=ticket_id,
+                category=classification.category,
+                auto_responded=True,
+                confidence=classification.confidence,
+                tokens_used=200,   # estimated — agents don't expose token counts yet
+                response_time=0.5, # estimated — agents don't expose timing yet
+            )
 
-        record: dict = {
-            "ticket_id": ticket_id,
-            "ticket_text": ticket_text,
-            "category": classification.category,
-            "response": response_text,
-            "auto_responded": True,
-            "confidence": classification.confidence,
-            "priority": "low",
-            "quality_score": quality_score,
-        }
-        state.ticket_history.append(record)
+            record: dict = {
+                "ticket_id": ticket_id,
+                "ticket_text": ticket_text,
+                "category": classification.category,
+                "response": response_text,
+                "auto_responded": True,
+                "confidence": classification.confidence,
+                "priority": "low",
+                "quality_score": quality_score,
+            }
+            state.ticket_history.append(record)
 
-        return TicketResponse(
-            ticket_id=ticket_id,
-            category=classification.category,
-            confidence=classification.confidence,
-            auto_responded=True,
-            response=response_text,
-            quality_score=quality_score,
-        )
+            return TicketResponse(
+                ticket_id=ticket_id,
+                category=classification.category,
+                confidence=classification.confidence,
+                auto_responded=True,
+                response=response_text,
+                quality_score=quality_score,
+            )
 
-    else:
-        escalation = state.escalation_agent.create_escalation(
-            ticket_text,
-            classification.category,
-            classification.confidence,
-        )
+        else:
+            escalation = state.escalation_agent.create_escalation(
+                ticket_text,
+                classification.category,
+                classification.confidence,
+            )
 
-        state.analytics.track_ticket_processed(
-            ticket_id=ticket_id,
-            category=classification.category,
-            auto_responded=False,
-            confidence=classification.confidence,
-            tokens_used=150,
-            response_time=0.5,
-        )
+            state.analytics.track_ticket_processed(
+                ticket_id=ticket_id,
+                category=classification.category,
+                auto_responded=False,
+                confidence=classification.confidence,
+                tokens_used=150,
+                response_time=0.5,
+            )
 
-        record = {
-            "ticket_id": ticket_id,
-            "ticket_text": ticket_text,
-            "category": classification.category,
-            "response": escalation.suggested_response,
-            "auto_responded": False,
-            "confidence": classification.confidence,
-            "priority": escalation.priority,
-        }
-        state.ticket_history.append(record)
-
-        return TicketResponse(
-            ticket_id=ticket_id,
-            category=classification.category,
-            confidence=classification.confidence,
-            auto_responded=False,
-            response=escalation.suggested_response,
-            priority=escalation.priority,
-            escalation={
-                "context_summary": escalation.context_summary,
-                "suggested_response": escalation.suggested_response,
+            record = {
+                "ticket_id": ticket_id,
+                "ticket_text": ticket_text,
+                "category": classification.category,
+                "response": escalation.suggested_response,
+                "auto_responded": False,
+                "confidence": classification.confidence,
                 "priority": escalation.priority,
-            },
-        )
+            }
+            state.ticket_history.append(record)
+
+            return TicketResponse(
+                ticket_id=ticket_id,
+                category=classification.category,
+                confidence=classification.confidence,
+                auto_responded=False,
+                response=escalation.suggested_response,
+                priority=escalation.priority,
+                escalation={
+                    "context_summary": escalation.context_summary,
+                    "suggested_response": escalation.suggested_response,
+                    "priority": escalation.priority,
+                },
+            )
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=500, detail="Ticket processing failed")
 
 
 @router.get("", response_model=TicketsListResponse)
 async def list_tickets(request: Request) -> TicketsListResponse:
     """Return the last 20 processed tickets."""
-    history: List[dict] = request.app.state.ticket_history
-    recent = history[-_TICKET_HISTORY_LIMIT:]
-    tickets = [TicketSummary(**t) for t in recent]
-    return TicketsListResponse(tickets=tickets)
+    try:
+        history: List[dict] = request.app.state.ticket_history
+        recent = history[-_TICKET_HISTORY_LIMIT:]
+        tickets = [TicketSummary(**t) for t in recent]
+        return TicketsListResponse(tickets=tickets)
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=500, detail="Ticket processing failed")

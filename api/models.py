@@ -1,6 +1,6 @@
 # Pydantic v2 request/response models for the FastAPI backend
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Optional, List
 
 
@@ -36,6 +36,8 @@ class TicketResponse(BaseModel):
 
 class TicketSummary(BaseModel):
     """A single ticket in the history list"""
+
+    model_config = ConfigDict(extra="ignore")
 
     ticket_id: str
     ticket_text: str
