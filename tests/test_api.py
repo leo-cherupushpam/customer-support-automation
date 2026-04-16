@@ -6,9 +6,11 @@ import os
 # Ensure the project root and src/ are on the path (mirrors api/main.py setup)
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _SRC = os.path.join(_ROOT, "src")
-for _p in (_ROOT, _SRC):
-    if _p not in sys.path:
-        sys.path.insert(0, _p)
+# _ROOT must come before _SRC so top-level agents/ isn't shadowed by src/agents/
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
+if _SRC not in sys.path:
+    sys.path.append(_SRC)
 
 import pytest
 from unittest.mock import MagicMock
