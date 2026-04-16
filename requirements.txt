@@ -1,5 +1,16 @@
 # Requirements for Customer Support Automation
 
+# Core dependencies
 pytest>=7.0.0
 openai>=1.0.0
 python-dotenv>=1.0.0
+streamlit>=1.28.0
+
+# Pinecone for RAG (Week 2)
+pinecone-client>=2.2.0
+sentence-transformers>=2.2.0
+streamlit>=1.28.0
+
+# Pinecone for RAG (Week 2)
+pinecone-client>=2.2.0
+sentence-transformers>=2.2.0
