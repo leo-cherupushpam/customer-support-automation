@@ -17,3 +17,15 @@ htmlcov/
 .env
 .env.local
 !.env.example
+
+# Keep scripts
+*.sh
+!*.sh~
+
+# Keep scripts
+*.sh
+!*.sh~
+
+# Keep scripts
+*.sh
+!*.sh~
