@@ -4,13 +4,12 @@
 pytest>=7.0.0
 openai>=1.0.0
 python-dotenv>=1.0.0
-streamlit>=1.28.0
 
 # Pinecone for RAG (Week 2)
 pinecone-client>=2.2.0
 sentence-transformers>=2.2.0
-streamlit>=1.28.0
 
-# Pinecone for RAG (Week 2)
-pinecone-client>=2.2.0
-sentence-transformers>=2.2.0
+# FastAPI backend (Phase 1 migration)
+fastapi>=0.110.0
+uvicorn>=0.27.0
+httpx>=0.27.0
