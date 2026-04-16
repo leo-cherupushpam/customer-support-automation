@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
 
 // --- Types ---
 
@@ -104,6 +104,7 @@ export default function Home() {
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
   const [tickets, setTickets] = useState<TicketSummary[]>([]);
   const [ticketsError, setTicketsError] = useState<string | null>(null);
+  const [ticketsLoading, setTicketsLoading] = useState(true);
 
   const fetchAnalytics = useCallback(async () => {
     try {
@@ -126,6 +127,8 @@ export default function Home() {
       setTicketsError(null);
     } catch (err) {
       setTicketsError(err instanceof Error ? err.message : "Failed to load tickets");
+    } finally {
+      setTicketsLoading(false);
     }
   }, []);
 
@@ -166,7 +169,7 @@ export default function Home() {
     }
   }
 
-  const recentTickets = tickets.slice(-5).reverse();
+  const recentTickets = [...tickets.slice(-5)].reverse();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -344,6 +347,8 @@ export default function Home() {
               <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
                 {ticketsError}
               </div>
+            ) : ticketsLoading ? (
+              <p className="text-sm text-gray-400 text-center py-6">Loading tickets...</p>
             ) : recentTickets.length === 0 ? (
               <p className="text-sm text-gray-400 text-center py-6">No tickets yet.</p>
             ) : (
@@ -359,7 +364,7 @@ export default function Home() {
                           className="text-xs font-mono text-gray-400 truncate max-w-[140px]"
                           title={ticket.ticket_id}
                         >
-                          #{ticket.ticket_id.slice(0, 12)}...
+                          #{ticket.ticket_id.length > 12 ? `${ticket.ticket_id.slice(0, 12)}...` : ticket.ticket_id}
                         </span>
                         <span className="text-xs text-gray-600 capitalize font-medium">
                           {ticket.category}
