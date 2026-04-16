@@ -21,11 +21,3 @@ htmlcov/
 # Keep scripts
 *.sh
 !*.sh~
-
-# Keep scripts
-*.sh
-!*.sh~
-
-# Keep scripts
-*.sh
-!*.sh~
