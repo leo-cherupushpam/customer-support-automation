@@ -63,7 +63,11 @@ class EscalationAgent:
         # Truncate long tickets
         summary_text = ticket_text[:200] + "..." if len(ticket_text) > 200 else ticket_text
         
+        # Priority will be assigned separately, but we include it here for context
+        priority = self._assign_priority(ticket_text, category, confidence)
+        
         return (
+            f"Priority: {priority.upper()}\n"
             f"Category: {category}\n"
             f"Confidence: {confidence:.0%}\n"
             f"Customer message: {summary_text}"
