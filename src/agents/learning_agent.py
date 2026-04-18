@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from typing import List, Optional
 from datetime import datetime
+from src.knowledge_base.kb_manager import KBManager
 
 @dataclass
 class KBUpdate:
@@ -12,6 +13,8 @@ class KBUpdate:
     category: str
     confidence: float
     source_ticket: str
+    suggested_filename: str
+    review_status: str  # pending, approved, rejected
 
 class LearningAgent:
     """
@@ -27,6 +30,8 @@ class LearningAgent:
     def __init__(self):
         # Track processed tickets to avoid duplicates
         self.processed_tickets = set()
+        # Initialize KBManager for KB operations
+        self.kb_manager = KBManager()
         
     def analyze_resolved_tickets(self, resolved_tickets: List[dict]) -> List[KBUpdate]:
         """
@@ -70,20 +75,30 @@ class LearningAgent:
         ticket_text = ticket['ticket'].strip()
         response = ticket['response'].strip()
         category = ticket['category']
-        
+
         # Skip very short tickets
         if len(ticket_text) < 10 or len(response) < 10:
             return None
-        
+
         # Calculate confidence based on clarity
         confidence = self._calculate_update_confidence(ticket_text, response)
-        
+
+        # Generate suggested filename from question
+        import re
+        suggested_filename = re.sub(r'[^\w\s-]', '', ticket_text.lower())
+        suggested_filename = re.sub(r'[-\s]+', '-', suggested_filename).strip('-')
+        if not suggested_filename:
+            suggested_filename = "kb-article"
+        suggested_filename = f"{suggested_filename}.md"
+
         return KBUpdate(
             question=ticket_text,
             answer=response,
             category=category,
             confidence=confidence,
-            source_ticket=ticket_text[:50] + "..." if len(ticket_text) > 50 else ticket_text
+            source_ticket=ticket_text[:50] + "..." if len(ticket_text) > 50 else ticket_text,
+            suggested_filename=suggested_filename,
+            review_status="pending"
         )
     
     def _calculate_update_confidence(self, ticket_text: str, response: str) -> float:
